@@ -3,6 +3,7 @@ import {
     Package, LayoutDashboard, Settings, ShoppingCart,
     Plus, Search, SlidersHorizontal, Edit2, Trash2, Bell, TrendingUp, Users, DollarSign
 } from 'lucide-react';
+import { POKEMART_ASSETS } from '../data/products';
 
 interface Metric {
     label: string;
@@ -24,7 +25,7 @@ const ITEMS = [
         category: 'Scarlet & Violet Special Set',
         stock: 15,
         price: 119.99,
-        image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDxsSSCkmvethIR3xYPQKbUvG4r4rkZs93nL_U3GpN4IC6mE_Def1p-y8B3rpQqqvtgQFQV-iJ8rd_JjoM1rto5ytNArRhHINYQ7VME0fQzV9_GcrSx79FrQRDKVv9pkX1I4UbQDmmV4VVh-SsyrzUqRRYPSCOCnyKd5f4QB5XVhGoguYivGKwM-ZERnLSyhGG8X5o1DuifMwLsODnRUxFfiWII_Lk22dlzfqQXP80reXKw1dphluvZk1hG2qMtYXbz1UvrN53uI_u5'
+        image: POKEMART_ASSETS.upc151
     },
     {
         name: 'Charizard ex - 199/165 (SIR)',
@@ -32,14 +33,14 @@ const ITEMS = [
         stock: 3,
         price: 115.00,
         lowStock: true,
-        image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBIEnrKf5UkQEjyfHdYZ9nf1vJDw-Xtq8sxSJbZ8CpXXnwRADJemnCK7Ubd5XBKdMRg2V5UlJFR6qamf_b_r4J-yYZEW0apEdsFFjBUdDha2kKdiSgKyRs-UhB7-dIsj89RNKZ6Uj1rrI7XJEoEvRoGhQ6BeE05VoC8mUrfPGiWiBeadwXVnEIQaG9zfA86yO8I0aOnCX7B6SySD3S9Mx4FaTVLs5238HmAXaF58XjybU43nJO4PgEo3jzUZcPKkb5vEiHL8hUsOPyC'
+        image: POKEMART_ASSETS.charizardSIR
     },
     {
         name: 'Booster Box: Paldea Evolved',
         category: 'Scarlet & Violet Base Set',
         stock: 42,
         price: 98.50,
-        image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBRGCcd3jNzv4l0UYJtVfQMPEPe-fjNA6JJ0FWcNNiuESMXPahuDuo28drqbaxBn3p_5zrh6Ro39QYp8dQp8Vx5KKIqWCYxllqUrmnzS-fhTgWHaQ1KpcnGJrpkFkfu2KR7Fh5_nLkbcop4292iOnvf2f0Uh42X1IML_fG1KbHUtkmQmBVv_bIX6DOAs8YPMt5ao4KR8FQiUT4lKVpAiiNf4rMVKQB3ELgSyzjkn4CFo7T_I_P6n9Z5YiHQEUWdI15W9yeTQb1bswlc'
+        image: POKEMART_ASSETS.paldeaBox
     },
     {
         name: 'Zapdos ex - 202/165 (SIR)',
@@ -47,7 +48,7 @@ const ITEMS = [
         stock: 0,
         price: 45.00,
         outOfStock: true,
-        image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC8Mo4fWXKxjhfdlU1aWs-XyCdTbPToPNlSOyLryAqoJUoHIh9dLtDS7W5bXzCJPACCud-i-UVvUioTCePQtTUITODzCrG3qxz3NMZOiyAUomN6gIZlezWMZ7OpE8G55i9cv_sdhYhWwSxGOsptAnRSPuJDOfhp4d_-AkIdHdzgBoPSor8fTnyavHChI5Keor2Y6citD2hSx9C7weGGpwXazL9rQNrTnpNb118L5L5GI36v5Zril84FVdj9EpZViHqGx7TbnFxSNw1B'
+        image: POKEMART_ASSETS.zapdosSIR
     },
 ];
 

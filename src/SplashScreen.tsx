@@ -1,8 +1,15 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import splashBg from './assets/splash-bg.png';
+import { PRODUCTS } from './data/products';
 
 const SplashScreen: React.FC = () => {
+    // Find the galaxy variant URL from the POKEMART_ASSETS (indirectly via products if needed, or just hardcode/import)
+    // Actually, I can just hardcode the URL here or import the assets.
+    // Let's just import the PRODUCTS or POKEMART_ASSETS if exported.
+    // For simplicity, I'll use the URL directly since it's a "theme" constant.
+    const splashImg = "https://lh3.googleusercontent.com/aida-public/AB6AXuASuxP3_N7XeoPvnwY3Nw2Z5I9zVj_Ei37kCRkl1rbRUxLSB0QBy88uf3WQUom4MUf-IPDfjtbBlO-coZQGEEgrp48PABXvW0cEktFX7rDYY4uYBPbA-edy2ZHOoDXhNwt6LxlNa8Z_FD1fMC05EcYDdmZDS6s6tMhUl3b4nC9w16cO6U3axmOo7JUwgjab9KCGAP_YOmk4joAJ7CJCdmdn7OJ1e5Q9h19CwGzG9i5Ns3I3Fh4OKsDHeK6-pSXTkC6Mpt1uMrmURjk";
+
     return (
         <motion.div
             initial={{ opacity: 1 }}
@@ -12,10 +19,10 @@ const SplashScreen: React.FC = () => {
         >
             {/* Premium Background Image */}
             <div
-                className="absolute inset-0 bg-cover bg-center transition-transform duration-[10s] scale-110"
+                className="absolute inset-0 bg-cover bg-center transition-transform duration-[15s] scale-110 motion-safe:animate-pulse"
                 style={{
-                    backgroundImage: `url(${splashBg})`,
-                    filter: 'brightness(0.5) contrast(1.2)'
+                    backgroundImage: `url(${splashImg})`,
+                    filter: 'brightness(0.35) contrast(1.1) saturate(1.2)'
                 }}
             />
 
