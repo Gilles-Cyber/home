@@ -1,9 +1,9 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     Settings as SettingsIcon, Shield, CreditCard, MessageSquare,
     Bell, Languages, Moon, Sun, ChevronRight, Lock,
-    LogOut, Smartphone, Globe, Info
+    LogOut, Smartphone, Globe, Info, X
 } from 'lucide-react';
 
 interface SettingsViewProps {
@@ -15,6 +15,7 @@ interface SettingsViewProps {
 
 const SettingsView: React.FC<SettingsViewProps> = ({ theme, onToggleTheme, onClose, onLockAdmin }) => {
     const isDark = theme === 'dark';
+    const [showPrivacy, setShowPrivacy] = useState(false);
 
     const SettingItem = ({ icon: Icon, label, sublabel, onClick, toggle, value }: any) => (
         <button
@@ -86,10 +87,9 @@ const SettingsView: React.FC<SettingsViewProps> = ({ theme, onToggleTheme, onClo
                             sublabel="PIN Protected"
                         />
                         <SettingItem
-                            icon={Lock}
-                            label="Lock Admin Portal"
-                            sublabel="Disconnect from Vault"
-                            onClick={onLockAdmin}
+                            icon={Globe}
+                            label="Global Currency"
+                            sublabel="USD ($) - default"
                         />
                     </div>
 
@@ -104,6 +104,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ theme, onToggleTheme, onClo
                         <SettingItem
                             icon={MessageSquare}
                             label="Privacy Policy"
+                            onClick={() => setShowPrivacy(true)}
                         />
                     </div>
 
@@ -115,6 +116,61 @@ const SettingsView: React.FC<SettingsViewProps> = ({ theme, onToggleTheme, onClo
                     </button>
                 </div>
             </div>
+
+            {/* Privacy Policy Modal */}
+            <AnimatePresence>
+                {showPrivacy && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md"
+                        onClick={() => setShowPrivacy(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 20 }}
+                            className={`w-full max-w-2xl max-h-[80vh] rounded-[2.5rem] flex flex-col shadow-2xl border overflow-hidden ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-gray-200'}`}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className={`p-8 border-b flex items-center justify-between ${isDark ? 'border-white/5 bg-white/5' : 'border-gray-100 bg-gray-50'}`}>
+                                <h3 className={`text-xl font-black uppercase italic tracking-tighter ${isDark ? 'text-white' : 'text-slate-900'}`}>Privacy & Security Protocol</h3>
+                                <button onClick={() => setShowPrivacy(false)} className={`p-2 rounded-xl ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-200'}`}><X /></button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-8 space-y-6 text-sm leading-relaxed no-scrollbar">
+                                <section>
+                                    <h4 className="font-black uppercase text-blue-500 mb-2 tracking-widest text-xs">1. Data Encryption</h4>
+                                    <p className={isDark ? 'text-slate-400' : 'text-slate-600'}>
+                                        The TCG Vault utilizes enterprise-grade AES-256 bit encryption for all stored assets and transaction records. Your personal collection data is isolated within secure vault enclaves.
+                                    </p>
+                                </section>
+                                <section>
+                                    <h4 className="font-black uppercase text-blue-500 mb-2 tracking-widest text-xs">2. Zero-Knowledge Proofs</h4>
+                                    <p className={isDark ? 'text-slate-400' : 'text-slate-600'}>
+                                        We operate on a zero-knowledge architecture. Your administrator credentials and private collection valuations are never stored in plain text or accessible to external entities.
+                                    </p>
+                                </section>
+                                <section>
+                                    <h4 className="font-black uppercase text-blue-500 mb-2 tracking-widest text-xs">3. Transaction Security</h4>
+                                    <p className={isDark ? 'text-slate-400' : 'text-slate-600'}>
+                                        All payments processed through our Coinbase Commerce gateway are handled externally. The TCG Vault never stores credit card details or crypto wallet private keys.
+                                    </p>
+                                </section>
+                                <section>
+                                    <h4 className="font-black uppercase text-blue-500 mb-2 tracking-widest text-xs">4. Contact & Support</h4>
+                                    <p className={isDark ? 'text-slate-400' : 'text-slate-600'}>
+                                        For inquiries regarding your data rights or to request a permanent vault purge, please contact our Elite Concierge through the secure chat channel.
+                                    </p>
+                                </section>
+                            </div>
+                            <div className={`p-6 border-t text-center ${isDark ? 'border-white/10' : 'border-gray-100'}`}>
+                                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">End of Document</p>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
