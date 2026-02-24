@@ -299,7 +299,7 @@ export default function AdminDashboard({ products, onAdd, onUpdate, onDelete, on
                                 </thead>
                                 <tbody className="text-sm">
                                     {visitors.map((v, i) => (
-                                        <tr key={i} className={`border-t ${isDark ? 'border-white/5' : 'border-gray-50'}`}>
+                                        <tr key={i} className={`border-t group ${isDark ? 'border-white/5' : 'border-gray-50'}`}>
                                             <td className="py-4 pl-4 font-mono text-[10px] text-blue-500 uppercase">
                                                 <div className="flex items-center gap-2">
                                                     {editingNickname?.id === v.session_id ? (

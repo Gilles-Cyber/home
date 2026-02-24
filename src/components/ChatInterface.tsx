@@ -74,6 +74,22 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onClose, theme, sessionId
                     const newMsg = payload.new;
                     setMessages(prev => {
                         if (prev.find(m => m.id === newMsg.id)) return prev;
+
+                        // Deduplicate optimistic messages
+                        const optIdx = prev.findIndex(m => (m as any).optimistic && m.sender === newMsg.sender && m.text === newMsg.text);
+                        if (optIdx !== -1) {
+                            const next = [...prev];
+                            next[optIdx] = {
+                                id: newMsg.id,
+                                text: newMsg.text,
+                                sender: newMsg.sender,
+                                timestamp: new Date(newMsg.created_at),
+                                delivered: newMsg.delivered,
+                                is_read: newMsg.is_read
+                            };
+                            return next;
+                        }
+
                         return [...prev, {
                             id: newMsg.id,
                             text: newMsg.text,
@@ -112,27 +128,28 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onClose, theme, sessionId
         setInput('');
 
         // Optimistic update
-        const tempId = Date.now();
+        const tempId = `temp-${Date.now()}`;
         const optimisticMsg: Message = {
             id: tempId,
             text,
             sender: 'user',
-            timestamp: new Date()
+            timestamp: new Date(),
+            delivered: false,
+            is_read: false
         };
+        (optimisticMsg as any).optimistic = true;
         setMessages(prev => [...prev, optimisticMsg]);
 
-        const { data, error } = await supabase
+        const { error } = await supabase
             .from('messages')
             .insert([{
                 session_id: sessionId,
                 text: text,
                 sender: 'user'
-            }])
-            .select();
+            }]);
 
         if (error) {
             console.error('Send error:', error);
-            // Remove optimistic message on error? Or show error state
             setMessages(prev => prev.filter(m => m.id !== tempId));
             return;
         }
