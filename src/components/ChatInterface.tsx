@@ -140,18 +140,29 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onClose, theme, sessionId
         (optimisticMsg as any).optimistic = true;
         setMessages(prev => [...prev, optimisticMsg]);
 
-        const { error } = await supabase
-            .from('messages')
-            .insert([{
+        try {
+            // Safety Upsert: Ensure the visitor record exists before sending the message
+            // (Defense against potential App.tsx initSession delay/failure)
+            await supabase.from('visitors').upsert({
                 session_id: sessionId,
-                text: text,
-                sender: 'user'
-            }]);
+                last_active: new Date().toISOString()
+            }, { onConflict: 'session_id' });
 
-        if (error) {
+            const { error } = await supabase
+                .from('messages')
+                .insert([{
+                    session_id: sessionId,
+                    text: text,
+                    sender: 'user'
+                }]);
+
+            if (error) throw error;
+        } catch (error) {
             console.error('Send error:', error);
+            // Remove optimistic message if it failed to persist
             setMessages(prev => prev.filter(m => m.id !== tempId));
-            return;
+            // Provide visual feedback (could be a toast or integrated into message list)
+            alert('Your message could not be sent. Please check your connection and try again.');
         }
     };
 

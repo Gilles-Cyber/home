@@ -37,6 +37,7 @@ export default function AdminDashboard({ products, onAdd, onUpdate, onDelete, on
     const [editingNickname, setEditingNickname] = useState<{ id: string, name: string } | null>(null);
     const [unreadCount, setUnreadCount] = useState(0);
     const [sessionUnread, setSessionUnread] = useState<Record<string, number>>({});
+    const [latestMessages, setLatestMessages] = useState<Record<string, string>>({});
 
     const handleUpdateNickname = async (sessionId: string, newName: string) => {
         const { error } = await supabase.from('visitors').update({ nickname: newName }).eq('session_id', sessionId);
@@ -59,11 +60,19 @@ export default function AdminDashboard({ products, onAdd, onUpdate, onDelete, on
             const { data: vData } = await supabase.from('visitors').select('*').order('last_active', { ascending: false });
             if (vData) setVisitors(vData);
 
-            // Fetch Chats (unique sessions that have messages)
-            const { data: cData } = await supabase.from('messages').select('session_id').order('created_at', { ascending: false });
-            if (cData) {
-                const uniqueSessions = Array.from(new Set(cData.map(m => m.session_id)));
+            // Fetch Chats and Latest User Messages
+            const { data: mData } = await supabase.from('messages').select('session_id, text, sender').order('created_at', { ascending: false });
+            if (mData) {
+                const uniqueSessions = Array.from(new Set(mData.map(m => m.session_id)));
                 setChats(uniqueSessions);
+
+                const latest: Record<string, string> = {};
+                mData.forEach(m => {
+                    if (!latest[m.session_id] && m.sender === 'user') {
+                        latest[m.session_id] = m.text;
+                    }
+                });
+                setLatestMessages(latest);
             }
 
             // Fetch Unread Count from DB — only on initial mount
@@ -91,26 +100,42 @@ export default function AdminDashboard({ products, onAdd, onUpdate, onDelete, on
             if (vData) setVisitors(vData);
         }).subscribe();
 
-        // Message subscription: manage counts LOCALLY, never re-query DB
+        // Message subscription: manage counts and previews with real-time sync
         const chatSub = supabase.channel('chats_admin').on('postgres_changes', {
-            event: 'INSERT', schema: 'public', table: 'messages'
+            event: '*', schema: 'public', table: 'messages'
         }, async (payload) => {
-            const msg = payload.new;
+            if (payload.eventType === 'INSERT') {
+                const msg = payload.new;
 
-            // Always add new session to chats list if not present
-            setChats(prev => prev.includes(msg.session_id) ? prev : [msg.session_id, ...prev]);
+                // Update latest message preview (only if user message)
+                if (msg.sender === 'user') {
+                    setLatestMessages(prev => ({ ...prev, [msg.session_id]: msg.text }));
+                }
 
-            if (msg.sender === 'user') {
-                const currentChat = selectedChatRef.current;
-                if (currentChat === msg.session_id) {
-                    // Admin is watching this chat — mark read immediately, don't change bell count
-                    await supabase.from('messages').update({ delivered: true, is_read: true }).eq('id', msg.id);
-                } else {
-                    // Admin is NOT watching — increment count by exactly 1
-                    setUnreadCount(prev => prev + 1);
-                    setSessionUnread(prev => ({ ...prev, [msg.session_id]: (prev[msg.session_id] || 0) + 1 }));
-                    showToast(`💬 New message from ${msg.session_id.slice(0, 8)}`, 'info');
-                    new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch(() => { });
+                // Always add new session to chats list if not present
+                setChats(prev => prev.includes(msg.session_id) ? prev : [msg.session_id, ...prev]);
+
+                if (msg.sender === 'user') {
+                    const currentChat = selectedChatRef.current;
+                    if (currentChat === msg.session_id) {
+                        await supabase.from('messages').update({ delivered: true, is_read: true }).eq('id', msg.id);
+                    } else {
+                        setUnreadCount(prev => prev + 1);
+                        setSessionUnread(prev => ({ ...prev, [msg.session_id]: (prev[msg.session_id] || 0) + 1 }));
+                        showToast(`💬 New message from ${msg.session_id.slice(0, 8)}`, 'info');
+                        new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch(() => { });
+                    }
+                }
+            } else if (payload.eventType === 'UPDATE') {
+                const updated = payload.new;
+                // If it's a read-status update, we should re-sync.
+                // Re-syncing from DB is safest to avoid drift.
+                const { data: unreadData } = await supabase.from('messages').select('session_id').eq('sender', 'user').eq('is_read', false);
+                if (unreadData) {
+                    const bySession: Record<string, number> = {};
+                    unreadData.forEach(m => { bySession[m.session_id] = (bySession[m.session_id] || 0) + 1; });
+                    setSessionUnread(bySession);
+                    setUnreadCount(unreadData.length);
                 }
             }
         }).subscribe();
@@ -127,14 +152,35 @@ export default function AdminDashboard({ products, onAdd, onUpdate, onDelete, on
                 const { data } = await supabase.from('messages').select('*').eq('session_id', selectedChat).order('created_at', { ascending: true });
                 if (data) {
                     setChatMessages(data);
-                    // Count how many unread we are about to mark as read
-                    const toMarkCount = data.filter(m => m.sender === 'user' && !m.is_read).length;
-                    // Mark as read + delivered when admin views
-                    if (toMarkCount > 0) {
-                        await supabase.from('messages').update({ is_read: true, delivered: true }).eq('session_id', selectedChat).eq('sender', 'user').eq('is_read', false);
-                        // Immediately decrement in local state without waiting for subscription
-                        setUnreadCount(prev => Math.max(0, prev - toMarkCount));
-                        setSessionUnread(prev => { const next = { ...prev }; delete next[selectedChat]; return next; });
+                    // Dynamically calculate unread specifically for this session from DB
+                    const unreadInSession = data.filter(m => m.sender === 'user' && !m.is_read);
+                    const toMarkIds = unreadInSession.map(m => m.id);
+
+                    if (toMarkIds.length > 0) {
+                        // Optimistic local update: clear notification immediately for better UX
+                        setUnreadCount(prev => Math.max(0, prev - toMarkIds.length));
+                        setSessionUnread(prev => {
+                            const next = { ...prev };
+                            delete next[selectedChat];
+                            return next;
+                        });
+
+                        await supabase.from('messages').update({ is_read: true, delivered: true }).in('id', toMarkIds);
+
+                        // Small delay to let DB update propagate, then re-sync absolute counts as a safety check
+                        setTimeout(async () => {
+                            const { data: unreadTotal } = await supabase.from('messages').select('id').eq('sender', 'user').eq('is_read', false);
+                            if (unreadTotal) {
+                                setUnreadCount(unreadTotal.length);
+                            }
+
+                            // Ensure session is actually removed from unread (in case of race condition)
+                            setSessionUnread(prev => {
+                                const next = { ...prev };
+                                delete next[selectedChat];
+                                return next;
+                            });
+                        }, 800);
                     }
                 }
             };
@@ -165,6 +211,22 @@ export default function AdminDashboard({ products, onAdd, onUpdate, onDelete, on
             sender: 'admin'
         }]);
     };
+
+    // Manual sync on Tab Switch to ensure badge is never stuck
+    useEffect(() => {
+        if (activeTab === 'chats') {
+            const sync = async () => {
+                const { data } = await supabase.from('messages').select('session_id, id').eq('sender', 'user').eq('is_read', false);
+                if (data) {
+                    setUnreadCount(data.length);
+                    const bySession: Record<string, number> = {};
+                    data.forEach(m => { bySession[m.session_id] = (bySession[m.session_id] || 0) + 1; });
+                    setSessionUnread(bySession);
+                }
+            };
+            sync();
+        }
+    }, [activeTab]);
 
     const metrics = useMemo(() => {
         const totalValue = products.reduce((sum, p) => sum + (p.price * p.stock), 0);
@@ -219,18 +281,6 @@ export default function AdminDashboard({ products, onAdd, onUpdate, onDelete, on
                         </button>
 
                         <button
-                            onClick={() => setActiveTab('chats')}
-                            className={`relative p-2.5 rounded-2xl border shadow-sm transition-all ${isDark ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-gray-100 hover:bg-gray-50'}`}
-                            title="Support Notifications"
-                        >
-                            <Bell className={`w-5 h-5 ${unreadCount > 0 ? 'text-amber-500' : 'text-slate-400'}`} />
-                            {unreadCount > 0 && (
-                                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-white animate-bounce">
-                                    {unreadCount}
-                                </span>
-                            )}
-                        </button>
-                        <button
                             onClick={onLock}
                             className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all border ${isDark ? 'bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500/20' : 'bg-red-50 border-red-100 text-red-600 hover:bg-red-100'}`}
                         >
@@ -274,15 +324,20 @@ export default function AdminDashboard({ products, onAdd, onUpdate, onDelete, on
                     {[
                         { id: 'inventory', label: 'Inventory', icon: Package },
                         { id: 'visitors', label: 'Visitors', icon: Globe },
-                        { id: 'chats', label: 'Support', icon: MessageSquare }
+                        { id: 'chats', label: 'Chat', icon: MessageSquare, badge: unreadCount }
                     ].map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as any)}
-                            className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                            className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all relative ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
                         >
                             <tab.icon className="w-4 h-4" />
                             {tab.label}
+                            {tab.badge && tab.badge > 0 && (
+                                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white ring-2 ring-slate-950">
+                                    {tab.badge}
+                                </span>
+                            )}
                         </button>
                     ))}
                 </div>
@@ -580,7 +635,14 @@ export default function AdminDashboard({ products, onAdd, onUpdate, onDelete, on
                                                     </>
                                                 )}
                                             </div>
-                                            <p className={`text-[9px] font-black uppercase tracking-widest mt-1 ${isSelected ? 'opacity-80 text-white' : 'opacity-60'}`}>Chat Participant</p>
+                                            <div className="flex items-center justify-between gap-1 mt-1">
+                                                <p className={`text-[9px] font-black uppercase tracking-widest truncate flex-1 ${isSelected ? 'opacity-80 text-white' : 'opacity-60'}`}>
+                                                    {latestMessages[cid] || 'Chat Participant'}
+                                                </p>
+                                                <p className={`text-[8px] opacity-40 font-black ${isSelected ? 'text-white' : ''}`}>
+                                                    {visitor?.last_active ? new Date(visitor.last_active).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                                </p>
+                                            </div>
                                         </div>
                                     );
                                 })}

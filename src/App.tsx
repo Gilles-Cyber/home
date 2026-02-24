@@ -41,7 +41,26 @@ export default function App() {
   }, []);
 
   // Supabase & Session State
-  const [sessionId, setSessionId] = useState<string>('');
+  const [sessionId, setSessionId] = useState<string>(() => {
+    const saved = localStorage.getItem('tcg_vault_session');
+    if (saved) return saved;
+
+    // Robust UUID Fallback
+    const generateUUID = () => {
+      try {
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+      } catch (e) { }
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    };
+
+    const newId = generateUUID();
+    localStorage.setItem('tcg_vault_session', newId);
+    return newId;
+  });
 
   // Phase 14: Dynamic Products & Theme
   const [liveProducts, setLiveProducts] = useState<Product[]>(() => {
@@ -120,6 +139,12 @@ export default function App() {
       let currentIp = '';
       let locationData = { city: '', country: '', lat: null as number | null, lon: null as number | null };
 
+      // 1. Immediate minimal upsert to ensure foreign key safety for chat
+      await supabase.from('visitors').upsert({
+        session_id: sessionId,
+        last_active: new Date().toISOString()
+      }, { onConflict: 'session_id' });
+
       // 1. IP Fallback / Initial Data
       try {
         const geoRes = await fetch('https://ipapi.co/json/');
@@ -157,37 +182,20 @@ export default function App() {
           }
 
           // Update existing session with better data
-          const sid = localStorage.getItem('tcg_vault_session');
-          if (sid) {
-            await supabase.from('visitors').update({
-              location_city: locationData.city,
-              location_country: locationData.country,
-              latitude: locationData.lat,
-              longitude: locationData.lon
-            }).eq('session_id', sid);
-          }
+          await supabase.from('visitors').update({
+            location_city: locationData.city,
+            location_country: locationData.country,
+            latitude: locationData.lat,
+            longitude: locationData.lon
+          }).eq('session_id', sessionId);
         }, (error) => {
           console.log('User denied or failed geolocation:', error.message);
         });
       }
 
-      let id = localStorage.getItem('tcg_vault_session');
-      if (currentIp && !id) {
-        const { data: existingVisitor } = await supabase
-          .from('visitors')
-          .select('session_id')
-          .eq('ip_address', currentIp)
-          .single();
-        if (existingVisitor) id = existingVisitor.session_id;
-      }
-
-      if (!id) id = crypto.randomUUID();
-      localStorage.setItem('tcg_vault_session', id);
-      setSessionId(id);
-
-      // Sanitize visitor data for Supabase (ensure no undefined values)
+      // 4. Final detailed upsert using the stable sessionId
       const visitorData = {
-        session_id: id,
+        session_id: sessionId,
         last_active: new Date().toISOString(),
         ip_address: currentIp || null,
         location_city: locationData.city || null,
@@ -200,7 +208,7 @@ export default function App() {
     };
 
     initSession();
-  }, []);
+  }, [sessionId]);
 
 
   const cartCount = cartItems.reduce((s, i) => s + i.quantity, 0);

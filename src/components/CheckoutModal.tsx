@@ -5,6 +5,8 @@ import {
     Bitcoin, MessageSquare, CheckCircle2, Lock
 } from 'lucide-react';
 
+import { createCoinbaseCharge } from '../lib/coinbase';
+
 interface CheckoutModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -18,13 +20,30 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onOtherM
     const [step, setStep] = useState<'methods' | 'coinbase'>('methods');
     const [isProcessing, setIsProcessing] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    const handlePayCoinbase = () => {
+    const handlePayCoinbase = async () => {
         setIsProcessing(true);
-        setTimeout(() => {
+        setError(null);
+        try {
+            const checkoutUrl = await createCoinbaseCharge({
+                name: 'TCG Vault Purchase',
+                description: `Vault Transaction for ${total.toLocaleString()} USD`,
+                amount: total.toString(),
+                currency: 'USD',
+                metadata: {
+                    source: 'TCG Vault Web',
+                    total: total
+                }
+            });
+
+            // Redirect to real Coinbase hosted page
+            window.location.href = checkoutUrl;
+        } catch (err: any) {
+            console.error('Coinbase Error:', err);
+            setError(err.message || 'Payment initializing failed');
             setIsProcessing(false);
-            setIsSuccess(true);
-        }, 3000);
+        }
     };
 
     if (!isOpen) return null;
@@ -133,10 +152,15 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onOtherM
                                         </div>
                                     ))}
                                 </div>
+                                {error && (
+                                    <div className="mb-4 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest text-center">
+                                        {error}
+                                    </div>
+                                )}
                                 {isProcessing ? (
                                     <div className="py-8 flex flex-col items-center gap-4">
                                         <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                                        <p className="text-xs font-black uppercase tracking-widest text-blue-500 animate-pulse">Confirming through blockchain...</p>
+                                        <p className="text-xs font-black uppercase tracking-widest text-blue-500 animate-pulse">Initializing Secure Checkout...</p>
                                     </div>
                                 ) : (
                                     <button
