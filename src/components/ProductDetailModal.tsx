@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Package, Star, ShoppingCart, Heart, ChevronRight, Minus, Plus } from 'lucide-react';
 import { Product } from '../types';
@@ -24,6 +25,8 @@ export default function ProductDetailModal({ product, onClose, onAddToCart, onTo
 
     const stockColor = product.stock <= 5 ? 'text-red-500' : product.stock <= 15 ? 'text-amber-500' : 'text-emerald-500';
 
+    const [activeImg, setActiveImg] = useState(product.image);
+
     return (
         <AnimatePresence>
             <motion.div
@@ -42,14 +45,38 @@ export default function ProductDetailModal({ product, onClose, onAddToCart, onTo
                     className="relative w-full md:max-w-2xl max-h-[92vh] bg-white dark:bg-slate-900 rounded-t-[2.5rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col"
                 >
                     {/* Header image */}
-                    <div className="relative w-full bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-800 dark:to-slate-950 flex items-center justify-center"
-                        style={{ height: 260 }}>
-                        <img
-                            src={product.image}
-                            alt={product.name}
-                            referrerPolicy="no-referrer"
-                            className="h-56 w-auto object-contain drop-shadow-2xl transition-transform duration-500 hover:scale-105"
-                        />
+                    <div className="relative w-full bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-800 dark:to-slate-950 flex flex-col items-center pt-8"
+                        style={{ height: 320 }}>
+                        <div className="relative flex-1 flex items-center justify-center w-full">
+                            <AnimatePresence mode="wait">
+                                <motion.img
+                                    key={activeImg}
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 1.1 }}
+                                    src={activeImg}
+                                    alt={product.name}
+                                    referrerPolicy="no-referrer"
+                                    className="h-52 w-auto object-contain drop-shadow-2xl"
+                                />
+                            </AnimatePresence>
+                        </div>
+
+                        {/* Thumbnails */}
+                        {product.image2 && (
+                            <div className="flex gap-2 pb-4">
+                                {[product.image, product.image2].map((img, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => setActiveImg(img)}
+                                        className={`w-10 h-10 rounded-lg border-2 overflow-hidden transition-all ${activeImg === img ? 'border-blue-600 scale-110 shadow-lg' : 'border-transparent opacity-50 hover:opacity-100'}`}
+                                    >
+                                        <img src={img} className="w-full h-full object-cover" />
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
                         <button
                             onClick={onClose}
                             className="absolute top-4 right-4 p-2.5 rounded-2xl bg-white dark:bg-slate-800 shadow-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-all active:scale-95"

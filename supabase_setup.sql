@@ -5,6 +5,7 @@ CREATE TABLE products (
   price DECIMAL NOT NULL,
   description TEXT,
   image TEXT,
+  image2 TEXT,
   stock INTEGER DEFAULT 0,
   category TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
