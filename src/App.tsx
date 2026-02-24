@@ -577,10 +577,6 @@ export default function App() {
                     </div>
                   )}
                 </button>
-                <button onClick={() => setIsChatOpen(true)} className={`p-2.5 rounded-xl transition-all active:scale-95 group relative ${theme === 'dark' ? 'hover:bg-white/5' : 'hover:bg-gray-100'}`}>
-                  <MessageSquare className={`w-6 h-6 ${isChatOpen ? 'text-blue-500' : theme === 'dark' ? 'text-slate-400' : 'text-slate-700'} group-hover:text-blue-500`} />
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-green-500 rounded-full border border-white animate-pulse" />
-                </button>
               </div>
             </div>
           </div>
@@ -676,7 +672,7 @@ export default function App() {
           <div className="flex justify-around items-center h-16 px-2">
             {[
               { id: 'home', icon: Home, label: 'Home' },
-              { id: 'chat', icon: MessageSquare, label: 'Support' },
+              { id: 'chat', icon: MessageSquare, label: 'Chat' },
               { id: 'favorites', icon: Heart, label: 'Favs' },
               { id: 'settings', icon: Settings, label: 'Settings' },
             ].map(item => (
