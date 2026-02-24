@@ -57,6 +57,29 @@ export default function App() {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
 
   useEffect(() => {
+    const fetchProducts = async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('id', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching products:', error);
+        // Fallback to static/local data if DB load fails
+        const saved = localStorage.getItem('tcg_vault_products');
+        setLiveProducts(saved ? JSON.parse(saved) : PRODUCTS);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        setLiveProducts(data);
+      } else {
+        // If DB is empty, use default data
+        setLiveProducts(PRODUCTS);
+      }
+    };
+
+    fetchProducts();
     // Sync initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsAdminAuthenticated(!!session);

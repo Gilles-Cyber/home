@@ -4,7 +4,7 @@ import {
     Package, LayoutDashboard, Settings, ShoppingCart,
     Plus, Search, SlidersHorizontal, Edit2, Trash2, Bell, TrendingUp, Users, DollarSign,
     X, Image as ImageIcon, Tag, Hash, Info, Check, ChevronDown, Lock, Globe, MessageSquare, Send, ShieldOff,
-    Radio
+    Radio, Upload, Loader2
 } from 'lucide-react';
 import { Product } from '../types';
 import { POKEMART_ASSETS } from '../data/products';
@@ -672,6 +672,74 @@ export default function AdminDashboard({ products, onAdd, onUpdate, onDelete, on
     );
 }
 
+function ProductImagePicker({ value, onChange, theme }: { value: string, onChange: (url: string) => void, theme: string }) {
+    const [uploading, setUploading] = useState(false);
+    const isDark = theme === 'dark';
+
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        try {
+            const file = e.target.files?.[0];
+            if (!file) return;
+
+            setUploading(true);
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Math.random()}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('products')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('products')
+                .getPublicUrl(filePath);
+
+            onChange(publicUrl);
+        } catch (error: any) {
+            console.error('Error uploading image:', error.message);
+            alert('Error uploading image!');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className={`aspect-video rounded-2xl border-2 border-dashed flex flex-col items-center justify-center relative overflow-hidden transition-all ${isDark ? 'border-white/10 bg-white/5 hover:border-blue-500/50' : 'border-gray-200 bg-gray-50 hover:border-blue-500/50'}`}>
+                {value ? (
+                    <>
+                        <img src={value} alt="Preview" className="w-full h-full object-contain" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 flex items-center justify-center transition-opacity">
+                            <label className="cursor-pointer bg-white text-black px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest">
+                                Change Image
+                                <input type="file" className="hidden" accept="image/*" onChange={handleUpload} disabled={uploading} />
+                            </label>
+                        </div>
+                    </>
+                ) : (
+                    <label className="cursor-pointer flex flex-col items-center gap-2">
+                        {uploading ? <Loader2 className="w-8 h-8 text-blue-500 animate-spin" /> : <Upload className="w-8 h-8 text-slate-400" />}
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{uploading ? 'Uploading...' : 'Upload Image'}</span>
+                        <input type="file" className="hidden" accept="image/*" onChange={handleUpload} disabled={uploading} />
+                    </label>
+                )}
+            </div>
+            {value && (
+                <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">Image URL (Manual Override)</label>
+                    <input
+                        className={`w-full px-4 py-3 rounded-xl border outline-none transition-all placeholder-slate-500 ${isDark ? 'bg-white/5 border-white/10 text-white focus:border-blue-500' : 'bg-gray-50 border-gray-200 text-slate-900 focus:border-blue-500'}`}
+                        value={value}
+                        onChange={e => onChange(e.target.value)}
+                    />
+                </div>
+            )}
+        </div>
+    );
+}
+
 function ProductFormModal({ product, isNew, onClose, onSave, theme }: any) {
     const [form, setForm] = useState<Product>({ ...product });
     const isDark = theme === 'dark';
@@ -711,8 +779,21 @@ function ProductFormModal({ product, isNew, onClose, onSave, theme }: any) {
                         </div>
                     </div>
                     <div>
-                        <label className={labelClasses}>Image URL</label>
-                        <input className={inputClasses} value={form.image} onChange={e => setForm({ ...form, image: e.target.value })} />
+                        <label className={labelClasses}>Product Image</label>
+                        <ProductImagePicker
+                            value={form.image}
+                            onChange={(url) => setForm({ ...form, image: url })}
+                            theme={theme}
+                        />
+                    </div>
+                    <div>
+                        <label className={labelClasses}>Description</label>
+                        <textarea
+                            className={`${inputClasses} min-h-[100px] resize-none`}
+                            value={form.description}
+                            onChange={e => setForm({ ...form, description: e.target.value })}
+                            placeholder="Describe your asset..."
+                        />
                     </div>
                     <div>
                         <label className={labelClasses}>Category</label>

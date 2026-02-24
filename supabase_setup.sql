@@ -20,7 +20,8 @@ CREATE TABLE visitors (
   ip_address TEXT, -- Store raw IP for persistence logic
   ip_mask TEXT,
   latitude DOUBLE PRECISION,
-  longitude DOUBLE PRECISION
+  longitude DOUBLE PRECISION,
+  nickname TEXT -- Admin-assigned display name for this visitor
 );
 
 -- 3. Messages Table (Real-time Chat)
