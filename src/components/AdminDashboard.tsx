@@ -37,6 +37,7 @@ export default function AdminDashboard({ products, onAdd, onUpdate, onDelete, on
     const [editingNickname, setEditingNickname] = useState<{ id: string, name: string } | null>(null);
     const [unreadCount, setUnreadCount] = useState(0);
     const [sessionUnread, setSessionUnread] = useState<Record<string, number>>({});
+    const [deletingProductId, setDeletingProductId] = useState<number | null>(null);
 
     const handleUpdateNickname = async (sessionId: string, newName: string) => {
         const { error } = await supabase.from('visitors').update({ nickname: newName }).eq('session_id', sessionId);
@@ -324,7 +325,24 @@ export default function AdminDashboard({ products, onAdd, onUpdate, onDelete, on
                                     </div>
                                     <div className="flex flex-col gap-2">
                                         <button onClick={() => { setIsAddingNew(false); setEditingProduct(item); }} className="p-3 rounded-xl bg-blue-600/10 text-blue-600 hover:bg-blue-600 hover:text-white transition-all"><Edit2 className="w-4 h-4" /></button>
-                                        <button onClick={() => onDelete(item.id)} className="p-3 rounded-xl bg-red-600/10 text-red-600 hover:bg-red-600 hover:text-white transition-all"><Trash2 className="w-4 h-4" /></button>
+                                        {deletingProductId === item.id ? (
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    onClick={() => { onDelete(item.id); setDeletingProductId(null); }}
+                                                    className="p-3 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-all font-black text-[10px] uppercase px-4"
+                                                >
+                                                    Confirm
+                                                </button>
+                                                <button
+                                                    onClick={() => setDeletingProductId(null)}
+                                                    className={`p-3 rounded-xl border transition-all font-black text-[10px] uppercase px-4 ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-gray-100 border-gray-200 text-slate-700'}`}
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button onClick={() => setDeletingProductId(item.id)} className="p-3 rounded-xl bg-red-600/10 text-red-600 hover:bg-red-600 hover:text-white transition-all"><Trash2 className="w-4 h-4" /></button>
+                                        )}
                                     </div>
                                 </motion.div>
                             ))}
@@ -711,15 +729,21 @@ function ProductImagePicker({ value, onChange, theme }: { value: string, onChang
                 {value ? (
                     <>
                         <img src={value} alt="Preview" className="w-full h-full object-contain" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 flex items-center justify-center transition-opacity">
-                            <label className="cursor-pointer bg-white text-black px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest">
-                                Change Image
+                        <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
+                            <label className="cursor-pointer bg-white text-black px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-transform">
+                                Replace
                                 <input type="file" className="hidden" accept="image/*" onChange={handleUpload} disabled={uploading} />
                             </label>
+                            <button
+                                onClick={(e) => { e.preventDefault(); onChange(''); }}
+                                className="bg-red-600 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-transform"
+                            >
+                                Remove
+                            </button>
                         </div>
                     </>
                 ) : (
-                    <label className="cursor-pointer flex flex-col items-center gap-2">
+                    <label className="cursor-pointer flex flex-col items-center gap-2 w-full h-full justify-center">
                         {uploading ? <Loader2 className="w-8 h-8 text-blue-500 animate-spin" /> : <Upload className="w-8 h-8 text-slate-400" />}
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{uploading ? 'Uploading...' : 'Upload Image'}</span>
                         <input type="file" className="hidden" accept="image/*" onChange={handleUpload} disabled={uploading} />
