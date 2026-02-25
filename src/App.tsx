@@ -244,7 +244,8 @@ export default function App() {
     }));
   };
 
-  const toggleFavorite = (id: number) => {
+  const toggleFavorite = (productOrId: Product | number) => {
+    const id = typeof productOrId === 'number' ? productOrId : productOrId.id;
     setFavorites(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -289,15 +290,12 @@ export default function App() {
   const renderHome = () => (
     <HighEndHome
       theme={theme}
-      featuredImages={FEATURED_IMAGES}
       products={liveProducts}
       onProductClick={setSelectedProduct}
       onAddToCart={addToCart}
       onToggleFavorite={toggleFavorite}
-      favorites={favorites}
-      activeCategory={activeCategory}
-      onCategoryChange={setActiveCategory}
-      searchQuery={searchQuery}
+      favorites={[...favorites]}
+      onShopClick={() => setCurrentView('shop')}
     />
   );
 
@@ -529,7 +527,7 @@ export default function App() {
                     <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 text-blue-600 transition-all" />
                   </button>
                 ))}
-                
+
                 <div className="mt-6 px-3.5">
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 ml-1">Follow the King</p>
                   <div className="flex gap-2">
